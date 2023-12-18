@@ -22,21 +22,33 @@ class Location:
         self.lat = lat
         self.lon = lon
         self.geolocator = Nominatim(user_agent="weather-logger")
-    def city(self):
-        location = self.geolocator.reverse(f'{self.lat}, {self.lon}',zoom=10, language="en").raw['address']
-        if 'city' in location:
-            return location['city']
+        self.weather = Weather(self.lat, self.lon)
+    def name(self):
+        try:
+            location = self.geolocator.reverse(f'{self.lat}, {self.lon}',zoom=10, language="en").raw['address']
+            if 'city' in location:
+                return location['city']
+        except:
+            return 'Unknown'
+        '''
+            Returns an Object of Weather
+        '''
 
 
 class Weather:
     
-    def __init__(self, lat, lon, date):
+    def __init__(self, lat, lon, date=None):
         self.lat = lat
         self.lon = lon
-        self.date = date
+        
+        if date == None:
+            self.date = datetime.now()
+        else:
+            self.date = date
+
         start = self.date - timedelta(days=1)
-        self.city = meteostat.Point(self.lat, self.lon)
-        self.data = meteostat.Daily(self.city, start, self.date)
+        self.point = meteostat.Point(self.lat, self.lon)
+        self.data = meteostat.Daily(self.point, start, self.date)
         self.data = self.data.fetch()
         self.data.fillna(0)
 
@@ -74,14 +86,18 @@ class Weather:
         return snow
     
     def get_week(self):
-        temp = meteostat.Daily(self.city, self.date - timedelta(days=7), self.date)
+        temp = meteostat.Daily(self.point, self.date - timedelta(days=7), self.date)
         temp = temp.fetch()
         temp = temp.fillna(0)
         return temp
 
     def get_month(self):
-        temp = meteostat.Daily(self.city, self.date - timedelta(days=31), self.date)
+        temp = meteostat.Daily(self.point, self.date - timedelta(days=31), self.date)
         temp = temp.fetch()
         temp = temp.fillna(0)
         return temp
 
+    def get_custom_date(self, start, end):
+        temp = meteostat.Daily(self.point, self.start, self.end)
+        temp = temp.fetch()
+        temp = temp.fillna(0)

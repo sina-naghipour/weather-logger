@@ -11,7 +11,7 @@ def today(request, lat, lon):
         return HttpResponseBadRequest("Invalid Latitude Value, Should Be Within -90 and 90.")
     if lon < -180 or lon > 180:
         return HttpResponseBadRequest("Invalid Latitude Value, Should Be Within -180 and 180.")
-    date = datetime.now()
-    result = Weather(lat, lon, date)
-    print(result.get_month())
-    return HttpResponse(result)
+    city = Location(lat, lon)
+    weather = city.weather
+    print(weather.get_month())
+    return HttpResponse(weather)
