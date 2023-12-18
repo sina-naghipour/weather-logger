@@ -5,7 +5,8 @@ from retry_requests import retry
 import requests
 from geopy.geocoders import Nominatim
 from pprint import pprint
-
+import meteostat
+from datetime import datetime, timedelta
 
 class FloatUrlParameterConverter:
     regex = '-?[0-9]+\.?[0-9]+'
@@ -29,66 +30,58 @@ class Location:
 
 class Weather:
     
-    def __init__(self, lat, lon):
-        self.url = 'https://api.open-meteo.com/v1/forecast'
+    def __init__(self, lat, lon, date):
         self.lat = lat
         self.lon = lon
-        self.params = {
-            'latitude': self.lat,
-            'longitude': self.lon,
-            'hourly': 'temperature_2m',
-            'daily' : 'temperature_2m_min',
-        }
-        cache_session = requests_cache.CachedSession('.cache', expire_after = 3600)
-        retry_session = retry(cache_session, retries = 5, backoff_factor = 0.2)
-        self.openmeteo = openmeteo_requests.Client(session = retry_session)
-        self.handler = self.openmeteo.weather_api(self.url, params=self.params)
-        self.handler = self.handler[0]
-        self.current_temperature = None
-        self.current_precipitation = None
+        self.date = date
+        start = self.date - timedelta(days=1)
+        self.city = meteostat.Point(self.lat, self.lon)
+        self.data = meteostat.Daily(self.city, start, self.date)
+        self.data = self.data.fetch()
+        self.data.fillna(0)
 
+    def get_average_temperature(self):
+        average_temperature = self.data.loc[f'{self.date.strftime('%Y-%m-%d')}']['tavg']
+        return average_temperature
 
-    def get_hourly(self):        
-        return self.handler.Hourly().Variables(0).ValuesAsNumpy()
-
-    def get_daily_min(self):
-        return self.handler.Daily().Variables(0).ValuesAsNumpy()
-    def get_daily_max(self):
-        params = {
-            'latitude': self.lat,
-            'longitude': self.lon,
-            'daily' : 'temperature_2m_max',
-        }
-        temp = self.openmeteo.weather_api(self.url, params=params)
-        return temp[0].Daily().Variables(0).ValuesAsNumpy()
-
-    def get_daily_weather_code(self):
-        params = {
-            'latitude': self.lat,
-            'longitude': self.lon,
-            'daily' : 'weather_code',
-        }
-        temp = self.openmeteo.weather_api(self.url, params=params)
-        return temp[0].Daily().Variables(0).ValuesAsNumpy()
+    def get_minimum_temperature(self):
+        minimum_temperature = self.data.loc[f'{self.date.strftime('%Y-%m-%d')}']['tmin']
+        return minimum_temperature
     
-    def hourly_precipitation(self):
-        self.handler.Hourly().precipitation()
+    def get_maximum_temperature(self):
+        maximum_temperature = self.data.loc[f'{self.date.strftime('%Y-%m-%d')}']['tmax']
+        return maximum_temperature
 
-    def get_current_weather_code(self):
-        params = {
-            'latitude': self.lat,
-            'longitude': self.lon,
-            'current' : 'weather_code',
-        }
-        temp = self.openmeteo.weather_api(self.url, params=params)        
-        return temp[0].Current().Variables(0).Value()
-    def get_current_tempreture(self):
-        params = {
-            'latitude': self.lat,
-            'longitude': self.lon,
-            'current' : 'temperature_2m',
-        }
-        temp = self.openmeteo.weather_api(self.url, params=params)        
-        return temp[0].Current().Variables(0).Value()
+    
+    def is_rainy(self):
+        precepitation = self.data.loc[f'{self.date.strftime('%Y-%m-%d')}']['prcp']
+        if precepitation > 2.5:
+            return 1
+        elif precepitation > 0 and precepitation < 2.5:
+            return 2
+        else:
+            return 0
 
-        
+    
+    def is_snowy(self): 
+        snow = self.data.loc[f'{self.date.strftime('%Y-%m-%d')}']['snow']
+        if snow > 25.4:
+            return 1
+        elif snow > 0 and snow < 25.4:
+            return 2
+        else:
+            return 0
+        return snow
+    
+    def get_week(self):
+        temp = meteostat.Daily(self.city, self.date - timedelta(days=7), self.date)
+        temp = temp.fetch()
+        temp = temp.fillna(0)
+        return temp
+
+    def get_month(self):
+        temp = meteostat.Daily(self.city, self.date - timedelta(days=31), self.date)
+        temp = temp.fetch()
+        temp = temp.fillna(0)
+        return temp
+
