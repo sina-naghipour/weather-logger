@@ -4,3 +4,6 @@ pandas
 django
 djangorestframework
 geopy
+folium
+httpx
+asyncio
