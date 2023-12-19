@@ -3,6 +3,7 @@ from .classes import *
 import meteostat
 from datetime import datetime, timedelta
 import re
+
 def today(request, lat, lon):
     # lat between -90 & 90
     # lon between -180 & 180
